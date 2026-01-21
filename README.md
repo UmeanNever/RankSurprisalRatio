@@ -7,7 +7,7 @@
 In this work, we study data–student suitability in reasoning distillation and propose **Rank-Surprisal Ratio** (RSR), a simple metric for identifying suitable reasoning trajectories for a given student.
 Motivated by our analysis, RSR jointly captures a trajectory's informativeness and alignment with the student’s behavior, favoring trajectories with low absolute probability but relatively high-ranked tokens.
 
-- 📖 **Paper**: [Read our paper on arXiv]()
+- 📖 **Paper**: [Read our paper on arXiv](https://arxiv.org/abs/2601.14249)
 - 🛠️ **Code**: Available in this repository.
 
 Our codebase supports the computation of our suitability metric, the **Rank-Surprisal Ratio**, given teacher trajectories and student models.
