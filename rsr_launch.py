@@ -12,12 +12,12 @@ models = [
 ]
 
 # Path configuration - customize these for your setup
-data_root = "/path/to/data/root"
+data_root = "/path/to/data/root"  # "/path/to/RSR_data"
 output_root = "/path/to/output/root"
 data_paths = [
     "/path/to/data/file1.json",
-    "/path/to/data/file2.json",
-]  # List of data files to compute RSR on, should be under data_root
+    "/path/to/data/directory2",
+]  # List of data files or directories to compute RSR on, should be under data_root
 filter_file_suffix = ""  # Optional filter for data files
 tag = ""  # Optional tag for the run
 
