@@ -33,7 +33,7 @@ def infer_dataset(
         # Standard format: JSON array of objects with "messages" field
         # Example:
         # [
-        #   {"messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]},
+        #   {"messages": [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]},
         #   ...
         # ]
         data = json.loads(json_path.read_text(encoding="utf-8"))

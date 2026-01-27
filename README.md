@@ -25,7 +25,7 @@ Our codebase supports the computation of our lightweight suitability metric, the
 - `rsr_launch.py` is the entry-point script for computing RSR. You can modify the global variables in this file according to your experimental setup and then run it to start the computation. Please refer to the provided datasets for the expected data format.  
 - `rsr_cal.py` contains the core computation logic, with placeholders and comments provided to facilitate easy customization. The code has been cleaned up from our original implementation.
 
-The current implementation depends only on `torch` and `transformers`. We recommend the following python environment configuration:
+The current implementation depends only on `torch` and `transformers`. We recommend (though not strictly require) the following Python environment configuration:
 
 * torch==2.7.0
 * transformers==4.53.3
