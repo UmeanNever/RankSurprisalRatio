@@ -293,7 +293,7 @@ def run(
     filter_file_suffix: str = "",
     input_format: str = "messages",
     rank_clip_r: int = 100,
-    use_flash_attn: bool = True,
+    use_flash_attn: bool = False,
 ):
     """
     Main entry point for RSR calculation.

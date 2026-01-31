@@ -51,7 +51,7 @@ def main(model_path, model_name, data_path):
         f"--rank_clip_r={rank_clip_r}",
     ]
     if use_flash_attn:
-        cmd_parts.append(f"--use_flash_attn=True")    
+        cmd_parts.append("--use_flash_attn")
     if max_model_len is not None:
         cmd_parts.append(f"--max_model_len={max_model_len}")
     if tag:
