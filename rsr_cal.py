@@ -1,4 +1,3 @@
-import math
 import json
 from pathlib import Path
 from typing import List, Tuple, Dict
@@ -9,14 +8,12 @@ import pandas as pd
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 import fire
-import torch.nn.functional as F
-
 
 # ----------------------------- Inference Engine ------------------------------
 
 @torch.inference_mode()
 def infer_dataset(
-    model, tokenizer, json_path: Path, batch_size: int, max_model_len: int = None, input_format: str = "messages"
+    model, tokenizer, json_path: Path, batch_size: int, max_model_len: int = None, input_format: str = "messages", rank_clip_r: int = 100
 ) -> List[Dict]:
     """
     Perform inference and return sample-level list:
@@ -83,38 +80,61 @@ def infer_dataset(
 
         input_ids_tensor = torch.tensor(input_ids_batch, dtype=torch.long, device=model.device)
         attention_mask_tensor = torch.tensor(attention_mask_batch, dtype=torch.long, device=model.device)
-        outputs = model(input_ids=input_ids_tensor, attention_mask=attention_mask_tensor)
-        logits = outputs.logits
+
+        outputs = model(
+            input_ids=input_ids_tensor,
+            attention_mask=attention_mask_tensor,
+            use_cache=False,
+        )
+        logits = outputs.logits  # [B, T, V]
 
         for bi, it in enumerate(batch):
             pr_len = len(it["prompt"])
             seq_len = len(it["full_ids"])
-            valid_logits = logits[bi, :seq_len-1]
-            valid_targets = it["full_ids"][1:]
-            log_probs = F.log_softmax(valid_logits, dim=-1)
+            resp_start = pr_len - 1
+
+            valid_logits = logits[bi, resp_start:seq_len-1]  # [T, V]
+            targets = torch.tensor(
+                it["full_ids"][resp_start+1:],
+                device=valid_logits.device,
+                dtype=torch.long,
+            )
+
+            if valid_logits.numel() == 0:
+                continue
+
+            # ---------- NLL / prob (exact, vectorized) ----------
+            vl32 = valid_logits.float()
+            logZ = torch.logsumexp(vl32, dim=-1)                 # [T]
+            tgt = vl32.gather(1, targets[:, None]).squeeze(1)   # [T]
+            nll = logZ - tgt                                  # [T]
+            prob = torch.exp(-nll)                            # [T]
+
+            # ---------- rank clip @ r (vectorized) ----------
+            topv = torch.topk(valid_logits, k=rank_clip_r, dim=-1).values  # [T, r]
+            rank = 1 + (topv.float() > tgt[:, None]).sum(dim=-1)           # [T]
+            rank = torch.clamp(rank, max=rank_clip_r)                      # [T]
+
+            # ---------- pack results ----------
+            nll_cpu = nll.detach().cpu()
+            prob_cpu = prob.detach().cpu()
+            rank_cpu = rank.detach().cpu()
 
             sample_tokens = []
-            for i, token_id in enumerate(valid_targets):
-                # only response tokens
-                if i < (pr_len - 1):
-                    continue
-                token_log_prob = log_probs[i, token_id].item()
-                nll = -token_log_prob
-                prob = math.exp(token_log_prob)
-                rank = (log_probs[i] > token_log_prob).sum().item() + 1
+            for j in range(nll_cpu.numel()):
                 sample_tokens.append({
-                    "position": i,
-                    "prob": prob,
-                    "nll": nll,
-                    "rank": rank
+                    "position": resp_start + j,
+                    "prob": float(prob_cpu[j].item()),
+                    "nll": float(nll_cpu[j].item()),
+                    "rank": int(rank_cpu[j].item()),
                 })
 
-            if sample_tokens:
-                all_samples.append({
-                    "sample_idx": it["idx"],
-                    "tokens": sample_tokens,
-                    "metadata": it["metadata"]
-                })
+            all_samples.append({
+                "sample_idx": it["idx"],
+                "tokens": sample_tokens,
+                "metadata": it["metadata"],
+            })
+
         sys.stdout.flush()
 
     return all_samples
@@ -141,7 +161,7 @@ def load_inference_results(input_path: Path) -> List[Dict]:
 
 # --------------------------- Metrics Computation ---------------------------
 
-def compute_sample_metrics(samples: List[Dict]) -> Tuple[Dict[str, float], List[Dict]]:
+def compute_sample_metrics(samples: List[Dict], rank_clip_r: int = 100) -> Tuple[Dict[str, float], List[Dict]]:
     """
     Input: sample-level list (see infer_dataset output).
     Returns:
@@ -156,20 +176,20 @@ def compute_sample_metrics(samples: List[Dict]) -> Tuple[Dict[str, float], List[
         tokens = s.get("tokens", [])
         if not tokens:
             continue
-        ranks_t100 = [min(t["rank"], 100) for t in tokens]
+        ranks_clip = [min(t["rank"], rank_clip_r) for t in tokens]
         nlls = [t["nll"] for t in tokens]
-        if not ranks_t100 or not nlls:
+        if not ranks_clip or not nlls:
             continue
 
-        avg_rank = sum(ranks_t100) / len(ranks_t100)
+        avg_rank = sum(ranks_clip) / len(ranks_clip)
         avg_nll = sum(nlls) / len(nlls)
-        sum_rank = sum(ranks_t100)
+        sum_rank = sum(ranks_clip)
         sum_nll = sum(nlls)
         ratio = sum_rank / sum_nll if sum_nll > 0 else 0.0
 
         sample_results.append({
             "sample_idx": s["sample_idx"],
-            "avg_rank_clip100": avg_rank,
+            "avg_rank_clip": avg_rank,
             "avg_surprisal": avg_nll,
             "rank_surprisal_ratio": ratio,
             **s.get("metadata", {})
@@ -179,11 +199,13 @@ def compute_sample_metrics(samples: List[Dict]) -> Tuple[Dict[str, float], List[
         return {}, []
 
     n = len(sample_results)
+    sum_avg_rank = sum(x["avg_rank_clip"] for x in sample_results)
+    sum_avg_surprisal = sum(x["avg_surprisal"] for x in sample_results)
     agg = {
-        "avg_rank_clip100": sum(x["avg_rank_clip100"] for x in sample_results) / n,
-        "avg_surprisal": sum(x["avg_surprisal"] for x in sample_results) / n,
-        "rank_surprisal_ratio": sum(x["rank_surprisal_ratio"] for x in sample_results) / n,
-    }
+        "avg_rank_clip": sum_avg_rank / n,
+        "avg_surprisal": sum_avg_surprisal / n,
+        "rank_surprisal_ratio": (sum_avg_rank / sum_avg_surprisal) if sum_avg_surprisal > 0 else 0.0,
+    }  # Refer to our paper for detailed explanations of the dataset-level RSR computation (Appendix A.8)
     return agg, sample_results
 
 # --------------------------- Utilities ---------------------------
@@ -270,6 +292,8 @@ def run(
     run_mode: str = "together",
     filter_file_suffix: str = "",
     input_format: str = "messages",
+    rank_clip_r: int = 100,
+    use_flash_attn: bool = True,
 ):
     """
     Main entry point for RSR calculation.
@@ -342,6 +366,9 @@ def run(
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 if tokenizer.pad_token_id is None:
                     tokenizer.pad_token_id = tokenizer.eos_token_id
+                if (not getattr(tokenizer, "chat_template", None)) and "llama" in model_name.lower():
+                    print(f"[Warning] Tokenizer has no chat_template attribute; attempting to set LLaMA3 template.")
+                    tokenizer.chat_template = "{{- bos_token }}\n{%- if custom_tools is defined %}\n    {%- set tools = custom_tools %}\n{%- endif %}\n{%- if not tools_in_user_message is defined %}\n    {%- set tools_in_user_message = true %}\n{%- endif %}\n{%- if not date_string is defined %}\n    {%- set date_string = \"26 Jul 2024\" %}\n{%- endif %}\n{%- if not tools is defined %}\n    {%- set tools = none %}\n{%- endif %}\n\n{#- This block extracts the system message, so we can slot it into the right place. #}\n{%- if messages[0]['role'] == 'system' %}\n    {%- set system_message = messages[0]['content']|trim %}\n    {%- set messages = messages[1:] %}\n{%- else %}\n    {%- set system_message = \"\" %}\n{%- endif %}\n\n{#- System message + builtin tools #}\n{{- \"<|start_header_id|>system<|end_header_id|>\\n\\n\" }}\n{%- if builtin_tools is defined or tools is not none %}\n    {{- \"Environment: ipython\\n\" }}\n{%- endif %}\n{%- if builtin_tools is defined %}\n    {{- \"Tools: \" + builtin_tools | reject('equalto', 'code_interpreter') | join(\", \") + \"\\n\\n\"}}\n{%- endif %}\n{{- \"Cutting Knowledge Date: December 2023\\n\" }}\n{{- \"Today Date: \" + date_string + \"\\n\\n\" }}\n{%- if tools is not none and not tools_in_user_message %}\n    {{- \"You have access to the following functions. To call a function, please respond with JSON for a function call.\" }}\n    {{- 'Respond in the format {\"name\": function name, \"parameters\": dictionary of argument name and its value}.' }}\n    {{- \"Do not use variables.\\n\\n\" }}\n    {%- for t in tools %}\n        {{- t | tojson(indent=4) }}\n        {{- \"\\n\\n\" }}\n    {%- endfor %}\n{%- endif %}\n{{- system_message }}\n{{- \"<|eot_id|>\" }}\n\n{#- Custom tools are passed in a user message with some extra guidance #}\n{%- if tools_in_user_message and not tools is none %}\n    {#- Extract the first user message so we can plug it in here #}\n    {%- if messages | length != 0 %}\n        {%- set first_user_message = messages[0]['content']|trim %}\n        {%- set messages = messages[1:] %}\n    {%- else %}\n        {{- raise_exception(\"Cannot put tools in the first user message when there's no first user message!\") }}\n{%- endif %}\n    {{- '<|start_header_id|>user<|end_header_id|>\\n\\n' -}}\n    {{- \"Given the following functions, please respond with a JSON for a function call \" }}\n    {{- \"with its proper arguments that best answers the given prompt.\\n\\n\" }}\n    {{- 'Respond in the format {\"name\": function name, \"parameters\": dictionary of argument name and its value}.' }}\n    {{- \"Do not use variables.\\n\\n\" }}\n    {%- for t in tools %}\n        {{- t | tojson(indent=4) }}\n        {{- \"\\n\\n\" }}\n    {%- endfor %}\n    {{- first_user_message + \"<|eot_id|>\"}}\n{%- endif %}\n\n{%- for message in messages %}\n    {%- if not (message.role == 'ipython' or message.role == 'tool' or 'tool_calls' in message) %}\n        {{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'+ message['content'] | trim + '<|eot_id|>' }}\n    {%- elif 'tool_calls' in message %}\n        {%- if not message.tool_calls|length == 1 %}\n            {{- raise_exception(\"This model only supports single tool-calls at once!\") }}\n        {%- endif %}\n        {%- set tool_call = message.tool_calls[0].function %}\n        {%- if builtin_tools is defined and tool_call.name in builtin_tools %}\n            {{- '<|start_header_id|>assistant<|end_header_id|>\\n\\n' -}}\n            {{- \"<|python_tag|>\" + tool_call.name + \".call(\" }}\n            {%- for arg_name, arg_val in tool_call.arguments | items %}\n                {{- arg_name + '=\"' + arg_val + '\"' }}\n                {%- if not loop.last %}\n                    {{- \", \" }}\n                {%- endif %}\n                {%- endfor %}\n            {{- \")\" }}\n        {%- else  %}\n            {{- '<|start_header_id|>assistant<|end_header_id|>\\n\\n' -}}\n            {{- '{\"name\": \"' + tool_call.name + '\", ' }}\n            {{- '\"parameters\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- \"}\" }}\n        {%- endif %}\n        {%- if builtin_tools is defined %}\n            {#- This means we're in ipython mode #}\n            {{- \"<|eom_id|>\" }}\n        {%- else %}\n            {{- \"<|eot_id|>\" }}\n        {%- endif %}\n    {%- elif message.role == \"tool\" or message.role == \"ipython\" %}\n        {{- \"<|start_header_id|>ipython<|end_header_id|>\\n\\n\" }}\n        {%- if message.content is mapping or message.content is iterable %}\n            {{- message.content | tojson }}\n        {%- else %}\n            {{- message.content }}\n        {%- endif %}\n        {{- \"<|eot_id|>\" }}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|start_header_id|>assistant<|end_header_id|>\\n\\n' }}\n{%- endif %}\n"
                 
                 dtype_map = {
                     "float16": torch.float16,
@@ -356,11 +383,11 @@ def run(
                     torch_dtype=torch_dtype,
                     device_map="auto",
                     trust_remote_code=True,
-                    attn_implementation="flash_attention_2",
+                    attn_implementation="flash_attention_2" if use_flash_attn else None,
                 )
                 model.eval()
             
-            samples = infer_dataset(model, tokenizer, fp, batch_size, max_model_len, input_format)
+            samples = infer_dataset(model, tokenizer, fp, batch_size, max_model_len, input_format, rank_clip_r)
             if not samples:
                 continue
             save_inference_results(samples, infer_path)
@@ -379,7 +406,7 @@ def run(
         samples = load_inference_results(infer_path)
 
         print(f"## Computing metrics: {data_name}")
-        metrics, sample_results = compute_sample_metrics(samples)
+        metrics, sample_results = compute_sample_metrics(samples, rank_clip_r=rank_clip_r)
 
         sample_metrics_jsonl = sample_metrics_dir / f"{data_name}.jsonl"
         with sample_metrics_jsonl.open("w", encoding="utf-8") as f:

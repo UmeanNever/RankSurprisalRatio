@@ -20,16 +20,22 @@ Motivated by our analysis, RSR jointly captures a trajectory's informativeness a
 For more information and a detailed introduction to RSR, please refer to our paper.
 
 ## 🚀 Quick Start
-Our codebase supports the computation of our lightweight suitability metric, the **Rank-Surprisal Ratio**, given teacher trajectories and student models.
+Our codebase supports the computation of our lightweight suitability metric, the **Rank-Surprisal Ratio** (RSR), given teacher trajectories and student models.
 
-- `rsr_launch.py` is the entry-point script for computing RSR. You can modify the global variables in this file according to your experimental setup and then run it to start the computation. Please refer to the provided datasets for the expected data format.  
-- `rsr_cal.py` contains the core computation logic, with placeholders and comments provided to facilitate easy customization. The code has been cleaned up from our original implementation.
+- `rsr_launch.py` serves as the entry-point script for computing RSR. You can modify the global variables in this file according to your experimental setup and then run it to start the computation. Please refer to the provided datasets for the expected data format.  
+- `rsr_cal.py` implements the core computation logic. It includes placeholders and explanatory comments to facilitate easy customization. The code has been cleaned up from our original implementation and streamlined to focus on RSR computation.
 
-The current implementation depends only on `torch` and `transformers`. We recommend (though not strictly require) the following Python environment configuration:
+The current implementation has minimal dependencies, relying primarily on `torch` and `transformers`. While not strictly required, we recommend the following Python environment configuration:
 
 * torch==2.7.0
 * transformers==4.53.3
+* flash-attn==2.8.3 (optional, but substantially boosts speed)
+* Python 3.12
 * CUDA 12.8
+
+See `requirements.txt` for the complete list of Python package dependencies. You can install them using `pip install -r requirements.txt`. We recommend installing `flash-attn` via pre-built wheels corresponding to your specific Python, CUDA, and PyTorch environment.
+
+In our experiments, computing RSR on the 5,000-trajectory dataset typically takes about one hour on a single H200 GPU with FlashAttention enabled. For further computational details, refer to Appendix C.1 of our paper.
 
 ## 📝 Citation
 
