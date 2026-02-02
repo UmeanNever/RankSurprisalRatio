@@ -23,7 +23,7 @@ For more information and a detailed introduction to RSR, please refer to our pap
   <img src="/assets/rsr.png" alt="llustration of the intuition behind RSR." width="450"/>
   <br>
   <em>
-    Figure 1: Illustration of the intuition behind RSR. <br> Suitable reasoning trajectories should balance informativeness and alignment by having low absolute probability but relatively high-ranked tokens under the student model.
+    Figure 1: Illustration of the intuition behind RSR. <br> Suitable reasoning trajectories should balance informativeness and alignment, having low absolute probability while their tokens remain relatively high-ranked under the student model.
   </em>
 </p>
 

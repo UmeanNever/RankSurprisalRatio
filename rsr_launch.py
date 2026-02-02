@@ -6,7 +6,7 @@ from pathlib import Path
 run_mode = "together"  # Run mode: "infer_only" | "metrics_only" | "together"
 input_format = "messages"  # Only supporting "messages" format now
 
-# Example model configuration
+# Example model configuration. Please ensure that the chat template is also configured correctly.
 models = [
     ("/path/to/your/model", "model-name"),
 ]
@@ -62,7 +62,7 @@ def main(model_path, model_name, data_path):
     print(f"Running: {model_name} on {Path(data_path).name}")
     print(f"Command: {' '.join(cmd_parts)}")
     
-    subprocess.run(cmd_parts, check=True)
+    subprocess.run(" ".join(cmd_parts), shell=True, executable="/bin/bash", check=True)
     print(f"Completed: {model_name} on {Path(data_path).name}\n")
 
 
