@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="/assets/rsr_def.png" alt="RSR definition." width="360"/>
+  <img src="/assets/rsr_def.png" alt="RSR definition." width="350"/>
   <br>
   <em>
     Rank values are clipped; see Eq. 7 in the paper for the formal definition.
