@@ -1,6 +1,6 @@
 <p align="center">
  <h2 align="center"> Rank-Surprisal Ratio (RSR) </h2>
- <p align="center"> From the paper <em>"Which Reasoning Trajectories Teach Students to Reason Better?  
+ <p align="center"> From the paper <em>"Which Reasoning Trajectories Teach Students to Reason Better? <br>
     A Simple Metric of Informative Alignment"</em> </p>
 </p>
 
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="/assets/rsr_def.png" alt="RSR definition." width="320"/>
+  <img src="/assets/rsr_def.png" alt="RSR definition." width="350"/>
   <br>
   <em>
     Rank values are clipped; see Eq. 7 in the paper for the formal definition.
