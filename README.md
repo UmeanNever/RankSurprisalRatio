@@ -14,7 +14,7 @@
   <img src="/assets/rsr_def.png" alt="RSR definition." width="350"/>
   <br>
   <em>
-    Rank values are clipped; see Eq. 7 in the paper for the formal definition.
+    RSR measures the suitability of a teacher trajectory (training sample) for a given student model. <br> Rank values are clipped; see Eq. 7 in the paper for the formal definition.
   </em>
 </p>
 
@@ -22,7 +22,7 @@
 
 In this work, we investigate data–student suitability in reasoning distillation and introduce **Rank-Surprisal Ratio** (RSR), a simple yet effective metric for **identifying suitable reasoning trajectories for a given student**.  
 
-RSR is defined as the ratio of a trajectory’s average token-wise rank to its average negative log-likelihood (surprisal), and **is straightforward to compute and interpret**.
+RSR is defined as the ratio of a trajectory’s average token-wise rank to its average negative log-likelihood (surprisal), and **is straightforward to compute and interpret**. Although our work focuses solely on reasoning tasks, RSR is not specifically designed for reasoning trajectories (CoTs) and can be **applied to general text data**.
 
 - 📖 **Paper**: [Which Reasoning Trajectories Teach Students to Reason Better? A Simple Metric of Informative Alignment](https://arxiv.org/abs/2601.14249)
 - 🛠️ **Code**: Available in this repository, providing **a clean and efficient implementation for computing the RSR metric**.
@@ -45,8 +45,16 @@ For more information and a detailed introduction to RSR, please refer to our pap
 ## 🚀 Quick Start
 Our codebase supports the computation of our lightweight suitability metric, the **Rank-Surprisal Ratio** (RSR), given teacher trajectories and student models. The code has been cleaned up from our original implementation and streamlined to focus on RSR computation.
 
-- `rsr_launch.py` serves as the **entry-point** script for computing RSR. You can modify the global variables in this file according to your experimental setup and then run it to start the computation. Please refer to the provided datasets for the expected data format.  
+- `rsr_launch.py` serves as the **entry-point** script and batch runner. It calls `rsr_cal.py` with your customized configuration. For the expected data format, you can refer to our provided datasets.
 - `rsr_cal.py` implements the core computation logic. It includes placeholders and explanatory comments to facilitate easy customization.
+
+To start the RSR computation, simply configure the global variables in `rsr_launch.py` according to your experimental setup and then execute the script:
+```
+python rsr_launch.py
+```
+In our experiments, computing RSR over the 5,000-trajectory dataset with a context length of 32,768 using a 7B model typically takes under one hour on a single H200 GPU with FlashAttention enabled. For further computational details, see Appendix C.1 of our paper.
+
+## ⚙️ Environment Setup
 
 The current implementation has minimal dependencies, relying primarily on `torch` and `transformers`. While not strictly required, we recommend the following Python environment configuration:
 
@@ -58,8 +66,6 @@ The current implementation has minimal dependencies, relying primarily on `torch
 
 See `requirements.txt` for the complete list of Python package dependencies. You can install them using `pip install -r requirements.txt`. We recommend installing `flash-attn` via pre-built wheels corresponding to your specific Python, CUDA, and PyTorch environment.
 
-In our experiments, computing RSR over the 5,000-trajectory dataset with a context length of 32,768 using a 7B
-model typically takes under one hour on a single H200 GPU with FlashAttention enabled. For further computational details, see Appendix C.1 of our paper.
 
 ## 📝 Citation
 
