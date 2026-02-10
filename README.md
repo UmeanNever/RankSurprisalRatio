@@ -45,7 +45,7 @@ For more information and a detailed introduction to RSR, please refer to our pap
 ## 🚀 Quick Start
 Our codebase supports the computation of our lightweight suitability metric, the **Rank-Surprisal Ratio** (RSR), given teacher trajectories and student models. The code has been cleaned up from our original implementation and streamlined to focus on RSR computation.
 
-- `rsr_launch.py` serves as the **entry-point** script and batch runner. It calls `rsr_cal.py` with your customized configuration. For the expected data format, you can refer to our provided datasets.
+- `rsr_launch.py` serves as the **entry-point** script and batch runner, calling `rsr_cal.py` with your customized configuration. See inline comments for details. For the expected data format, you may refer to our provided datasets on Hugging Face.
 - `rsr_cal.py` implements the core computation logic. It includes placeholders and explanatory comments to facilitate easy customization.
 
 To start the RSR computation, simply configure the global variables in `rsr_launch.py` according to your experimental setup and then execute the script:
