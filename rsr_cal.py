@@ -140,24 +140,44 @@ def infer_dataset(
     return all_samples
 
 
-def save_inference_results(samples: List[Dict], output_path: Path):
-    """Save sample-level results (one JSON per line)."""
+def save_inference_results(samples: List[Dict], output_path: Path, fmt: str = "parquet"):
+    """Save sample-level results as parquet or jsonl."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w", encoding="utf-8") as f:
+    if fmt == "parquet":
+        rows = []
         for s in samples:
-            f.write(json.dumps(s, ensure_ascii=False) + "\n")
+            rows.append({
+                "sample_idx": s["sample_idx"],
+                "tokens": json.dumps(s["tokens"], ensure_ascii=False),
+                **s.get("metadata", {}),
+            })
+        pd.DataFrame(rows).to_parquet(output_path, index=False)
+    else:
+        with output_path.open("w", encoding="utf-8") as f:
+            for s in samples:
+                f.write(json.dumps(s, ensure_ascii=False) + "\n")
 
 
-def load_inference_results(input_path: Path) -> List[Dict]:
-    """Load sample-level results (JSONL)."""
-    out = []
-    with input_path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            out.append(json.loads(line))
-    return out
+def load_inference_results(input_path: Path, fmt: str = "parquet") -> List[Dict]:
+    """Load sample-level results from parquet or jsonl."""
+    if fmt == "parquet":
+        df = pd.read_parquet(input_path)
+        out = []
+        for _, row in df.iterrows():
+            d = row.to_dict()
+            d["tokens"] = json.loads(d["tokens"])
+            sample_idx = d.pop("sample_idx")
+            metadata = {k: v for k, v in d.items() if k != "tokens"}
+            out.append({"sample_idx": sample_idx, "tokens": d["tokens"], "metadata": metadata})
+        return out
+    else:
+        out = []
+        with input_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    out.append(json.loads(line))
+        return out
 
 # --------------------------- Metrics Computation ---------------------------
 
@@ -171,6 +191,7 @@ def compute_sample_metrics(samples: List[Dict], rank_clip_r: int = 100) -> Tuple
     if not samples:
         return {}, []
 
+    eps = 1e-12
     sample_results = []
     for s in samples:
         tokens = s.get("tokens", [])
@@ -181,14 +202,16 @@ def compute_sample_metrics(samples: List[Dict], rank_clip_r: int = 100) -> Tuple
         if not ranks_clip or not nlls:
             continue
 
-        avg_rank = sum(ranks_clip) / len(ranks_clip)
-        avg_nll = sum(nlls) / len(nlls)
+        token_length = len(tokens)
+        avg_rank = sum(ranks_clip) / token_length
+        avg_nll = sum(nlls) / token_length
         sum_rank = sum(ranks_clip)
         sum_nll = sum(nlls)
-        ratio = sum_rank / sum_nll if sum_nll > 0 else 0.0
+        ratio = sum_rank / max(sum_nll, eps)
 
         sample_results.append({
             "sample_idx": s["sample_idx"],
+            "token_length": token_length,
             "avg_rank_clip": avg_rank,
             "avg_surprisal": avg_nll,
             "rank_surprisal_ratio": ratio,
@@ -201,12 +224,14 @@ def compute_sample_metrics(samples: List[Dict], rank_clip_r: int = 100) -> Tuple
     n = len(sample_results)
     sum_avg_rank = sum(x["avg_rank_clip"] for x in sample_results)
     sum_avg_surprisal = sum(x["avg_surprisal"] for x in sample_results)
-    agg = {
+    sum_token_length = sum(x["token_length"] for x in sample_results)
+    dataset_agg = {
+        "avg_token_length": sum_token_length / n,
         "avg_rank_clip": sum_avg_rank / n,
         "avg_surprisal": sum_avg_surprisal / n,
-        "rank_surprisal_ratio": (sum_avg_rank / sum_avg_surprisal) if sum_avg_surprisal > 0 else 0.0,
+        "rank_surprisal_ratio": sum_avg_rank / max(sum_avg_surprisal, eps),
     }  # Refer to our paper for detailed explanations of the dataset-level RSR computation (Appendix A.8)
-    return agg, sample_results
+    return dataset_agg, sample_results
 
 # --------------------------- Utilities ---------------------------
 
@@ -294,6 +319,7 @@ def run(
     input_format: str = "messages",
     rank_clip_r: int = 100,
     use_flash_attn: bool = False,
+    infer_save_format: str = "parquet",
 ):
     """
     Main entry point for RSR calculation.
@@ -335,13 +361,14 @@ def run(
 
     # TSV path
     tsv_path = output_root / f"rsr_{model_name_with_tag}.tsv"
+    infer_ext = "parquet" if infer_save_format == "parquet" else "jsonl"
 
     # Initialize model if needed
     model = None
     tokenizer = None
     
     print(f"# Model: {model_name_with_tag} ({model_path})")
-    print(f"# Input format: {input_format}")
+    print(f"# Input format: {input_format}, Infer format: {infer_save_format}")
     print(f"# Outputs:")
     print(f"  - Inference: {infer_dir}")
     print(f"  - Sample metrics: {sample_metrics_dir}")
@@ -354,7 +381,7 @@ def run(
         except ValueError:
             data_name = fp.stem
 
-        infer_path = infer_dir / f"{data_name}.jsonl"
+        infer_path = infer_dir / f"{data_name}.{infer_ext}"
         if filter_file_suffix and not data_name.endswith(filter_file_suffix):
             print(f"[SKIP] {data_name}: does not match filter suffix '{filter_file_suffix}'")
             continue
@@ -390,7 +417,7 @@ def run(
             samples = infer_dataset(model, tokenizer, fp, batch_size, max_model_len, input_format, rank_clip_r)
             if not samples:
                 continue
-            save_inference_results(samples, infer_path)
+            save_inference_results(samples, infer_path, fmt=infer_save_format)
             print(f"[OK] Saved inference results: {infer_path}")
 
         if run_mode == "infer_only":
@@ -403,7 +430,7 @@ def run(
             continue
 
         print(f"## Loading cached inference: {data_name}")
-        samples = load_inference_results(infer_path)
+        samples = load_inference_results(infer_path, fmt=infer_save_format)
 
         print(f"## Computing metrics: {data_name}")
         metrics, sample_results = compute_sample_metrics(samples, rank_clip_r=rank_clip_r)
