@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 from typing import List, Tuple, Dict
 
@@ -386,9 +387,11 @@ def run(
             print(f"[SKIP] {data_name}: does not match filter suffix '{filter_file_suffix}'")
             continue
 
+        infer_seconds = None
         should_run_inference = (run_mode in ["infer_only", "together"]) and not infer_path.exists()
         if should_run_inference:
             print(f"## Running inference: {data_name}")
+            t0 = time.perf_counter()
             if model is None:
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
                 if tokenizer.pad_token_id is None:
@@ -415,6 +418,7 @@ def run(
                 model.eval()
             
             samples = infer_dataset(model, tokenizer, fp, batch_size, max_model_len, input_format, rank_clip_r)
+            infer_seconds = time.perf_counter() - t0
             if not samples:
                 continue
             save_inference_results(samples, infer_path, fmt=infer_save_format)
@@ -433,7 +437,9 @@ def run(
         samples = load_inference_results(infer_path, fmt=infer_save_format)
 
         print(f"## Computing metrics: {data_name}")
+        t1 = time.perf_counter()
         metrics, sample_results = compute_sample_metrics(samples, rank_clip_r=rank_clip_r)
+        metrics_seconds = time.perf_counter() - t1
 
         sample_metrics_jsonl = sample_metrics_dir / f"{data_name}.jsonl"
         with sample_metrics_jsonl.open("w", encoding="utf-8") as f:
@@ -441,7 +447,7 @@ def run(
                 f.write(json.dumps(s, ensure_ascii=False) + "\n")
         print(f"[OK] Saved sample metrics: {sample_metrics_jsonl}")
 
-        row = {"data_name": data_name, **metrics}
+        row = {"data_name": data_name, **metrics, "infer_seconds": infer_seconds, "metrics_seconds": metrics_seconds}
         upsert_tsv(tsv_path, [row])
         print(f"[OK] Updated TSV: {tsv_path}")
         print()
