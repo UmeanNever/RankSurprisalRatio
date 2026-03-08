@@ -4,5 +4,6 @@ fire
 tqdm
 pandas
 accelerate
+sentencepiece
 pyarrow
-# flash-attn==2.8.3  # Optional, for faster computation
+# flash-attn==2.8.3  # Optional, for faster computation, recommend to install via pre-built wheels
