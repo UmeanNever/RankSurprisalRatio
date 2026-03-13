@@ -56,7 +56,7 @@ python rsr_launch.py
 ```
 In our experiments, computing RSR over the 5,000-trajectory dataset with a context length of 32,768 using a 7B model typically takes under one hour on a single H200 GPU with FlashAttention enabled. For further computational details, see Appendix C.1 of our paper.
  
-The computation results, including the metrics for each sample in the given data, will be saved to the `_sample_metrics` folder under the specified output root directory.
+The computation results, including dataset-level and sample-level metrics for the given data, will be saved under the specified output root directory. Sample-level results are stored in the `_sample_metrics` folder.
 
 ## ⚙️ Environment Setup
 
