@@ -1,9 +1,11 @@
 torch==2.7.0
-transformers==4.53.3
+transformers==4.57.3
 fire
 tqdm
 pandas
 accelerate
 sentencepiece
 pyarrow
+# pillow  # Optional, for multimodal data
+# torchvision==0.22.0  # Optional, for multimodal data
 # flash-attn==2.8.3  # Optional, for faster computation, recommend to install via pre-built wheels
