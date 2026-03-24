@@ -138,7 +138,7 @@ def _iter_json_files(data: Path, input_format: str) -> List[Path]:
 def _data_name_from(path: Path, data_root: Path) -> Tuple[Path, str]:
     """Generate data name from path."""
     rel = path.relative_to(data_root).with_suffix("")
-    return rel, "_".join(rel.parts)
+    return rel, "__".join(rel.parts)
 
 def upsert_tsv(tsv_path: Path, rows: List[Dict[str, object]]):
     """Update or insert rows in TSV file based on data_name."""

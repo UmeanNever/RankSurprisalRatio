@@ -370,12 +370,12 @@ def run(
 
     for fp in files:
         try:
-            rel_stem, data_name = _data_name_from(fp, data_root)
+            rel_path, data_name = _data_name_from(fp, data_root)
         except ValueError:
             data_name = fp.stem
-            rel_stem = Path(fp.stem)
+            rel_path = Path(fp.stem)
 
-        infer_path = infer_dir / rel_stem.parent / f"{rel_stem.name}.{infer_ext}" if infer_ext else None
+        infer_path = infer_dir / rel_path.parent / f"{rel_path.name}.{infer_ext}" if infer_ext else None
         if filter_file_suffix and not data_name.endswith(filter_file_suffix):
             print(f"[SKIP] {data_name}: does not match filter suffix '{filter_file_suffix}'")
             continue
@@ -453,7 +453,7 @@ def run(
         ds_metrics, sample_metrics = compute_sample_metrics(inferred_samples, rank_clip_r=rank_clip_r)
         metrics_seconds = time.perf_counter() - t1
 
-        sample_metrics_jsonl = sample_metrics_dir / rel_stem.parent / f"{rel_stem.name}.jsonl"
+        sample_metrics_jsonl = sample_metrics_dir / rel_path.parent / f"{rel_path.name}.jsonl"
         sample_metrics_jsonl.parent.mkdir(parents=True, exist_ok=True)
         with sample_metrics_jsonl.open("w", encoding="utf-8") as f:
             for s in sample_metrics:
