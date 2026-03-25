@@ -63,7 +63,7 @@ The computation results, including dataset-level and sample-level metrics for th
 The current implementation has minimal dependencies, relying primarily on `torch` and `transformers`. While not strictly required, we recommend using one of the following Python environment configurations:
 
 * torch==2.7.0 (2.6.0)
-* transformers==4.57.3 (4.50.3)
+* transformers==4.57.3 (4.53.3)
 * flash-attn==2.8.3 (2.7.4, optional but significantly boosts speed)
 * Python 3.12.12 (3.10.12)
 * CUDA 12.8 (12.4)
