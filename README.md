@@ -32,7 +32,7 @@ RSR is defined as the ratio of a trajectory’s average token-wise rank to its a
 ## 💡 Why RSR?
 
 <p align="center">
-  <img src="/assets/rsr_informal_example.png" alt="A hypothetical example to help illustrate the basic idea of RSR." width="450"/>
+  <img src="/assets/rsr_informal_example.png" alt="A hypothetical example to help illustrate the basic idea of RSR." width="550"/>
   <br>
   <em>
     Figure: A hypothetical example showing the motivation behind RSR. <br> Both overly informative and overly familiar trajectories offer limited learning value.
