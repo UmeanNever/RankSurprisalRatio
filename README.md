@@ -39,7 +39,7 @@ RSR is defined as the ratio of a trajectory’s average token-wise rank to its a
   </em>
 </p>
 
-RSR is motivated by the observation that effective reasoning distillation and SFT require trajectories that strike a balance between **informativeness and familiarity**, as illustrated in Figure 1. Existing assessment methods, such as probability-based metrics, cannot adequately capture this fine-grained balance.
+RSR is motivated by the observation that effective reasoning distillation and SFT require trajectories that strike a **balance between informativeness and familiarity**, as illustrated in Figure 1. Existing assessment methods, such as probability-based metrics, cannot adequately capture this fine-grained balance.
 
 By jointly modeling informativeness and behavioral alignment, RSR favors trajectories with low absolute probabilities but relatively high-ranked tokens (Figure 2), enabling the selection of training data that is both informative and learnable for the student.
 
