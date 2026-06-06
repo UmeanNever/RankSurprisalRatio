@@ -35,19 +35,19 @@ RSR is defined as the ratio of a trajectory’s average token-wise rank to its a
   <img src="/assets/rsr_informal_example.png" alt="A hypothetical example to help illustrate the basic idea of RSR." width="550"/>
   <br>
   <em>
-    Figure: A hypothetical example showing the motivation behind RSR. <br> Both overly informative and overly familiar trajectories offer limited learning value.
+    Figure 1: A hypothetical example showing the motivation behind RSR. <br> Both overly informative and overly familiar trajectories offer limited learning value.
   </em>
 </p>
 
-RSR is motivated by the observation that effective reasoning distillation and SFT require trajectories that balance informativeness and learnability, as illustrated in the figure.
+RSR is motivated by the observation that effective reasoning distillation and SFT require trajectories that strike a balance between informativeness and learnability, as illustrated in Figure 1. Existing assessment methods, such as probability-based metrics, cannot adequately capture this fine-grained balance.
 
-By jointly modeling informativeness and behavioral alignment, RSR favors trajectories with low absolute probabilities but relatively high-ranked tokens, enabling the selection of training data that is both informative and learnable for the student.
+By jointly modeling informativeness and behavioral alignment, RSR favors trajectories with low absolute probabilities but relatively high-ranked tokens (Figure 2), enabling the selection of training data that is both informative and learnable for the student.
 
 <p align="center">
   <img src="/assets/rsr.png" alt="llustration of the intuition behind RSR." width="450"/>
   <br>
   <em>
-    Figure: Illustration of the intuition underlying RSR's metric design. <br> Suitable reasoning trajectories should balance informativeness and alignment, <br> having low absolute probability while their tokens remain relatively high-ranked under the student model.
+    Figure 2: Illustration of the intuition underlying RSR's metric design. <br> Suitable reasoning trajectories should balance informativeness and alignment, <br> having low absolute probability while their tokens remain relatively high-ranked under the student model.
   </em>
 </p>
 
