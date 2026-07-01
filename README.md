@@ -88,10 +88,35 @@ See `requirements.txt` for the complete list of Python package dependencies. You
 If you find our work helpful, please consider citing our paper:
 
 ```bibtex
-@article{yang2026reasoning,
-  title={Which Reasoning Trajectories Teach Students to Reason Better? A Simple Metric of Informative Alignment},
-  author={Yuming Yang and Mingyoung Lai and Wanxu Zhao and Xiaoran Fan and Zhiheng Xi and Mingqi Wu and Chiyue Huang and Jun Zhao and Haijun Lv and Jian Tong and Yunhua Zhou and Yicheng Zou and Qipeng Guo and Tao Gui and Qi Zhang and Xuanjing Huang},
-  journal={arXiv preprint arXiv:2601.14249},
-  year={2026}
+@inproceedings{yang-etal-2026-reasoning,
+    title = "Which Reasoning Trajectories Teach Students to Reason Better? A Simple Metric of Informative Alignment",
+    author = "Yang, Yuming  and
+      Lai, Mingyoung  and
+      Zhao, Wanxu  and
+      Fan, Xiaoran  and
+      Xi, Zhiheng  and
+      Wu, Mingqi  and
+      Huang, Chiyue  and
+      Zhao, Jun  and
+      Lv, Haijun  and
+      Tong, Jian  and
+      Zhou, Yunhua  and
+      Zou, Yicheng  and
+      Guo, Qipeng  and
+      Gui, Tao  and
+      Zhang, Qi  and
+      Huang, Xuanjing",
+    editor = "Liakata, Maria  and
+      Moreira, Viviane P.  and
+      Zhang, Jiajun  and
+      Jurgens, David",
+    booktitle = "Proceedings of the 64th Annual Meeting of the {A}ssociation for {C}omputational {L}inguistics (Volume 1: Long Papers)",
+    month = jul,
+    year = "2026",
+    address = "San Diego, California, United States",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2026.acl-long.1950/",
+    pages = "42123--42150",
+    ISBN = "979-8-89176-390-6"
 }
 ```
